@@ -9,6 +9,8 @@ from urllib.parse import urljoin
 import requests
 from rich.console import Console
 
+from ..tools.python_fallbacks import _SESSION  # shared disabled-warning session
+
 from ..core.config import EngineConfig
 from ..core.models import JSEndpoint, Secret
 from ..core.runner import ToolRunner
@@ -49,7 +51,7 @@ def _fetch(url: str, timeout: int = 10) -> str:
     if url in _JS_BODY_CACHE:
         return _JS_BODY_CACHE[url]
     try:
-        r = requests.get(url, headers=UA, timeout=timeout, verify=False)
+        r = _SESSION.get(url, timeout=timeout, verify=False)
         body = r.text if r.ok else ""
     except Exception:
         body = ""
@@ -57,20 +59,21 @@ def _fetch(url: str, timeout: int = 10) -> str:
     return body
 
 
-def discover_js_from_urls(urls: list[str]) -> list[str]:
-    js = sorted({u for u in urls if re.search(r"\.js(\?|$)", u, re.I)})
+def discover_js_from_urls(urls: list[str], max_js: int = 1000) -> list[str]:
+    js = sorted({u for u in urls if re.search(r"\.js(\?|$)", u, re.I)}, reverse=True)
     # common bundle guesses on roots
     roots = {re.match(r"(https?://[^/]+)", u).group(1) for u in urls
              if re.match(r"https?://", u)}
     for root in roots:
         for guess in ("/main.js", "/app.js", "/bundle.js", "/static/js/main.js"):
             js.append(urljoin(root, guess))
-    return sorted(set(js))
+    # cap to avoid 10-minute phases of JS fetches
+    return sorted(set(js))[:max_js]
 
 
 def run(cfg: EngineConfig, runner: ToolRunner, urls: list[str]) -> tuple[list[JSEndpoint], list[Secret]]:
     out = runner.workdir
-    console.print(f"[cyan]→ js analysis on {len(urls)} urls[/]")
+    console.print(f"[cyan]→ js analysis over {len(urls)} urls (capped to 1000 js)[/]")
     js_urls = discover_js_from_urls(urls)
     endpoints: list[JSEndpoint] = []
     secrets: list[Secret] = []
@@ -107,10 +110,17 @@ def run(cfg: EngineConfig, runner: ToolRunner, urls: list[str]) -> tuple[list[JS
     if nuclei and cfg.run_nuclei and urls:
         urls_file = out / "urls_for_secrets.txt"
         urls_file.write_text("\n".join(sorted(set(urls))[:3000]))
+        from ..core.tool_flags import (detect_jsonl_flag, detect_no_color,
+                                       detect_silent_flag)
+        args = [nuclei, detect_silent_flag(nuclei), detect_jsonl_flag(nuclei),
+                "-tags", "token,exposure,config",
+                "-severity", "low,medium,high,critical", "-rl", "150"]
+        nc = detect_no_color(nuclei)
+        if nc:
+            args.append(nc)
         runner.run(
             "nuclei",
-            [nuclei, "-silent", "-jsonl", "-tags", "token,exposure,config",
-             "-severity", "low,medium,high,critical", "-rl", "150"],
+            args,
             input_file=urls_file,
             out_file=out / "secrets_nuclei.jsonl",
         )

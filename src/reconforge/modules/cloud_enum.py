@@ -4,8 +4,9 @@ from __future__ import annotations
 import re
 import concurrent.futures as cf
 
-import requests
 from rich.console import Console
+
+from ..tools.python_fallbacks import _SESSION
 
 from ..core.config import EngineConfig
 from ..core.models import CloudAsset
@@ -22,7 +23,7 @@ BUCKET_RE = re.compile(
 
 def _probe_bucket(url: str) -> CloudAsset | None:
     try:
-        r = requests.get(url, headers=UA, timeout=8, verify=False)
+        r = _SESSION.get(url, timeout=8, verify=False)
         status = {200: "open", 403: "protected", 404: "notfound"}.get(r.status_code, str(r.status_code))
         kind = ("s3" if "amazonaws" in url else
                 "azure_blob" if "windows.net" in url else

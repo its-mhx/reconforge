@@ -73,14 +73,15 @@ class Notifier:
             parts.extend(f"  {i}" for i in items[:25])
         self.send_text("\n".join(parts))
 
-        # vulnerability-heavy alert
-        sev = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
-        juicy = [
-            v for v in diff.added.get("vulnerabilities", [])
-            if sev.get(v.split("|")[0].split(":")[0], 0) >= 2
+        # vulnerability alert (severity is the first pipe-separated field)
+        sev_rank = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+        juice = [
+            k.split("|", 1)[1] for k in diff.added.get("vulnerabilities", [])
+            if sev_rank.get(k.split("|", 1)[0], 0) >= 2
         ]
-        if juicy:
-            self.send_text("🚨 New potentially serious findings:\n" + "\n".join(juicy))
+        if juice:
+            self.send_text("🚨 New medium+ vulnerabilities:\n"
+                           + "\n".join(juice[:20]))
 
         # secret leaks
         leaks = diff.added.get("secrets", [])

@@ -37,11 +37,12 @@ def run(cfg: EngineConfig, runner: ToolRunner,
         if ffuf:
             console.print(f"[cyan]→ ffuf on {base}[/]")
             jout = out / f"ffuf_{base.split('//')[1].replace('.','_')}.json"
+            # ffuf: -s (silent mode, no banner) + -of json (structured output)
             runner.run(
                 "ffuf",
                 [ffuf, "-u", f"{base}/FUZZ", "-w", str(wl),
                  "-mc", INTERESTING_CODES, "-t", str(cfg.threads),
-                 "-timeout", "8", "-ac", "-s", "-of", "json", "-o", str(jout)],
+                 "-timeout", "8", "-s", "-of", "json", "-o", str(jout)],
                 timeout=cfg.timeout,
             )
             if jout.exists():

@@ -49,6 +49,9 @@ def scan(
     run_xss: bool = typer.Option(False, "--xss", help="Enable XSS scanning (noisy)"),
     run_dirscan: bool = typer.Option(False, "--dirscan", help="Enable dir bruteforce"),
     no_nuclei: bool = typer.Option(False, "--no-nuclei"),
+    no_katana: bool = typer.Option(False, "--no-katana", help="Disable katana crawl"),
+    katana_max_hosts: int = typer.Option(20, "--katana-max-hosts"),
+    katana_depth: Optional[int] = typer.Option(None, "--katana-depth"),
     webhook: Optional[str] = typer.Option(None, "--webhook", help="Discord/Slack webhook URL"),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
@@ -63,7 +66,10 @@ def scan(
                     wordlist_subs=wordlist_subs, wordlist_dirs=wordlist_dirs,
                     resolvers=resolvers, proxy=proxy,
                     active_bruteforce=not no_bruteforce, run_xss=run_xss,
-                    run_dirscan=run_dirscan, run_nuclei=not no_nuclei)
+                    run_dirscan=run_dirscan, run_nuclei=not no_nuclei,
+                    run_katana=not no_katana,
+                    katana_max_hosts=katana_max_hosts,
+                    katana_depth=katana_depth)
 
     if domains:
         lines = [l.strip() for l in domains.read_text().splitlines() if l.strip()]
@@ -91,20 +97,64 @@ def show(
     table: str = typer.Option("hosts", "--table", "-t",
                               help="hosts|urls|ports|vulnerabilities|secrets|takeovers|directories|cloud_assets|dns_records|js_endpoints"),
     limit: int = typer.Option(30, "--limit", "-n"),
+    alive_only: bool = typer.Option(False, "--alive", help="For hosts table, only alive ones"),
+    plain: bool = typer.Option(False, "--plain", help="Just print key column (scripting)"),
 ):
     """Browse stored results of a previous scan."""
+    import json as _json
     db = output / target / "reconforge.db"
     if not db.exists():
         console.print(f"[red]No database at {db}[/]")
         raise typer.Exit(1)
     store = Store(db)
     rows = store.table(table)
-    t = Table(title=f"{table} ({len(rows)})")
-    cols = [c for c in rows[0].keys() if c not in ("hash", "extra", "description")] if rows else []
+    if alive_only and table == "hosts":
+        rows = [r for r in rows if r.get("alive")]
+
+    # friendly per-table layouts
+    LAYOUT = {
+        "hosts": ["host", "alive", "status_code", "title"],
+        "urls": ["url", "source", "status_code"],
+        "ports": ["host", "port", "service"],
+        "vulnerabilities": ["severity", "name", "host", "matched_at"],
+        "secrets": ["severity", "secret_type", "source_url", "value"],
+        "takeovers": ["subdomain", "cname", "service"],
+        "directories": ["url", "status_code", "content_length"],
+        "cloud_assets": ["kind", "url", "status"],
+        "dns_records": ["host", "record_type", "value"],
+        "js_endpoints": ["js_url", "endpoint", "kind"],
+    }
+
+    def _fmt(v):
+        if v is None or v == "":
+            return ""
+        if isinstance(v, str) and v.startswith("[") and v.endswith("]"):
+            try:
+                arr = _json.loads(v)
+                if isinstance(arr, list):
+                    return ", ".join(str(x) for x in arr[:2]) + (f"+{len(arr)-2}" if len(arr) > 2 else "")
+                return str(v)[:60]
+            except Exception:
+                return str(v)[:60]
+        s = str(v)
+        return s[:80] + ("…" if len(s) > 80 else "")
+
+    if plain:
+        key = LAYOUT.get(table, ["host"])[0]
+        for r in rows[:limit]:
+            console.print(r.get(key, ""))
+        return
+
+    cols = LAYOUT.get(table)
+    if not cols or not rows:
+        cols = [c for c in rows[0].keys() if c not in ("hash", "extra", "description")] if rows else []
+    t = Table(title=f"{table} ({len(rows)}{' — alive only' if alive_only else ''})",
+              highlight=True, expand=True)
     for c in cols:
-        t.add_column(c, overflow="fold")
+        # give fewer columns more room
+        t.add_column(c, overflow="ellipsis", ratio=1, max_width=60)
     for r in rows[:limit]:
-        t.add_row(*[str(r.get(c, ""))[:120] for c in cols])
+        t.add_row(*[_fmt(r.get(c)) for c in cols])
     console.print(t)
     if len(rows) > limit:
         console.print(f"[dim]… and {len(rows)-limit} more (raise --limit)[/]")

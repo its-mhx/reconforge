@@ -41,15 +41,17 @@ def run(cfg: EngineConfig, runner: ToolRunner) -> dict[str, list[str]]:
     else:
         console.print("[yellow]⚠ subfinder missing — skipping passive API enum[/]")
 
-    # ---- passive: amass (intel/enum passive only, fast)
+    # ---- passive: amass (intel/enum passive only). Cap runtime hard —
+    # amass can hang on slow upstream APIs even with -timeout.
     amass = cfg.tool("amass")
     if amass:
         console.print("[cyan]→ amass (passive)[/]")
         r = runner.run("amass", [amass, "enum", "-passive", "-d", target,
-                                 "-timeout", "8"],
-                       out_file=out / "subs_amass.txt", timeout=600)
+                                 "-timeout", "3", "-nocolor", "-silent"],
+                       out_file=out / "subs_amass.txt",
+                       timeout=120, ok_codes=(0, 1, 2, 124, 137, -9, -15))
         _add(runner.read_lines(out / "subs_amass.txt", lower=True), "amass")
-        console.print(f"  [dim]{r.lines} results[/]")
+        console.print(f"  [dim]{r.lines} results (rc={r.returncode})[/]")
     else:
         console.print("[yellow]⚠ amass missing — using crt.sh fallback[/]")
         _add(fb.crtsh_subdomains(target), "crtsh_py")
@@ -72,12 +74,18 @@ def run(cfg: EngineConfig, runner: ToolRunner) -> dict[str, list[str]]:
 
             dnsx = cfg.tool("dnsx")
             if dnsx:
+                from ..core.tool_flags import detect_jsonl_flag, detect_silent_flag
                 jfile = out / "subs_bruteforce.jsonl"
                 jfile.unlink(missing_ok=True)
+                # NOTE: avoid -wd here, some dnsx versions drop output when it's set.
+                args = [dnsx,
+                        detect_silent_flag(dnsx),
+                        detect_jsonl_flag(dnsx),
+                        "-a", "-aaaa", "-cname", "-resp", "-retry", "1",
+                        "-rl", "200", "-t", str(cfg.threads)]
                 r = runner.run(
                     "dnsx",
-                    [dnsx, "-silent", "-jsonl", "-a", "-aaaa", "-cname", "-resp", "-retry", "1",
-                     "-rl", "200", "-t", str(cfg.threads)],
+                    args,
                     input_file=cand_file,
                     out_file=jfile,
                     timeout=cfg.timeout,
@@ -95,6 +103,7 @@ def run(cfg: EngineConfig, runner: ToolRunner) -> dict[str, list[str]]:
 
     # ---- permutation (simple join of discovered tokens)
     console.print("[cyan]→ permutation scan[/]")
+    before = len(sources)
     tokens: set[str] = set()
     for h in list(sources)[:2000]:
         for part in h.replace(f".{target}", "").split("."):
@@ -109,9 +118,11 @@ def run(cfg: EngineConfig, runner: ToolRunner) -> dict[str, list[str]]:
         perm_file = out / "perm_candidates.txt"
         perm_file.write_text("\n".join(perm_candidates))
         if dnsx:
+            from ..core.tool_flags import detect_jsonl_flag, detect_silent_flag
             jfile = out / "subs_perm.jsonl"
             jfile.unlink(missing_ok=True)
-            runner.run("dnsx", [dnsx, "-silent", "-jsonl", "-resp", "-rl", "200",
+            runner.run("dnsx", [dnsx, detect_silent_flag(dnsx),
+                                detect_jsonl_flag(dnsx), "-resp", "-rl", "200",
                                 "-t", str(cfg.threads)],
                        input_file=perm_file,
                        out_file=jfile)
@@ -122,7 +133,7 @@ def run(cfg: EngineConfig, runner: ToolRunner) -> dict[str, list[str]]:
         else:
             hits = fb.resolve_bulk(perm_candidates, threads=cfg.threads * 4)
             _add(list(hits.keys()), "permutation_py")
-        console.print(f"  [dim]+{len(sources) - 0} total so far[/]")
+        console.print(f"  [dim]permutation added {len(sources) - before} hosts[/]")
 
     console.print(f"[green]✓ subdomains module: {len(sources)} unique hosts found[/]")
     return sources

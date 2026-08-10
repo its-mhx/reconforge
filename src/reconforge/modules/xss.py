@@ -24,8 +24,8 @@ def run(cfg: EngineConfig, runner: ToolRunner, param_urls: list[str]) -> list[Vu
         urls_file.write_text("\n".join(sorted(set(param_urls))[:2000]))
         runner.run(
             "dalfox",
-            ["dalfox", "file", str(urls_file), "--silence", "--format", "json",
-             "--worker", str(cfg.threads), "--timeout", "8",
+            [dalfox, "file", str(urls_file), "--silence-force", "--format", "json",
+             "--mass-worker", str(cfg.threads), "--timeout", "8",
              "--only-discovery", "--skip-bav", "--no-spinner"],
             out_file=out / "dalfox.json",
             timeout=cfg.timeout * 2,

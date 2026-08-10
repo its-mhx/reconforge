@@ -43,6 +43,9 @@ class EngineConfig:
     run_nuclei: bool = True
     run_xss: bool = False                     # dalfox is noisy; off unless asked
     run_dirscan: bool = False
+    run_katana: bool = True                   # disable to skip crawling entirely
+    katana_max_hosts: int = 20
+    katana_depth: int | None = None           # auto: 2 for full, 1 otherwise
     max_hosts_probe: int = 5000
     extra: dict = field(default_factory=dict)
 

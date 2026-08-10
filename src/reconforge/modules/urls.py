@@ -55,21 +55,29 @@ def run(cfg: EngineConfig, runner: ToolRunner,
         for line in runner.read_lines(out / "urls_wayback.txt"):
             _add(line, "wayback")
 
-    # ---- katana crawl on alive hosts (depth 2)
+    # ---- katana crawl on alive hosts (bounded by max-duration so crawl phase
+    # is provably bounded; katana can hang for hours on third-party targets).
     katana = cfg.tool("katana")
-    if katana and alive_hosts:
-        console.print(f"[cyan]→ katana crawl on {len(alive_hosts)} alive hosts (d=2)[/]")
+    if katana and alive_hosts and cfg.run_katana:
+        # cap hosts and depth so vuln profile phases stay snappy
+        cap_hosts = min(len(alive_hosts), cfg.katana_max_hosts)
+        depth = cfg.katana_depth or (2 if cfg.profile == "full" else 1)
+        console.print(f"[cyan]→ katana crawl on {cap_hosts} alive hosts (d={depth}, max 4min)[/]")
         targets_file = out / "katana_targets.txt"
-        targets_file.write_text("\n".join(f"https://{h}" for h in alive_hosts[:200]))
+        targets_file.write_text("\n".join(f"https://{h}" for h in alive_hosts[:cap_hosts]))
         runner.run(
             "katana",
-            [katana, "-silent", "-d", "2", "-jc", "-kf", "all",
-             "-timeout", "10", "-c", str(cfg.threads)],
+            [katana, "-silent", "-d", str(depth), "-jc", "-kf", "all",
+             "-timeout", "10", "-c", str(min(cfg.threads, 15)),
+             "-max-duration", "240"],      # hard cutoff: 4 min total
             input_file=targets_file,
             out_file=out / "urls_katana.txt",
+            timeout=300,
         )
         for line in runner.read_lines(out / "urls_katana.txt"):
             _add(line, "katana")
+    elif katana and alive_hosts and not cfg.run_katana:
+        console.print("[dim]• katana crawl disabled (--no-katana)[/]")
 
     console.print(f"[green]✓ urls: {len(urls)} unique collected[/]")
     return list(urls.values())

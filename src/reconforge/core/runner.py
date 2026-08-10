@@ -131,18 +131,27 @@ class ToolRunner:
             pass
 
     # ------------------------------------------------------------------
-    @staticmethod
-    def iter_json_lines(path: Path) -> Iterator[dict]:
-        """Yield parsed JSON objects from a JSONL file (nuclei/httpx/dnsx...)."""
+    _ANSI_RE = __import__('re').compile(r'\x1b\[[0-9;]*[a-zA-Z]')
+
+    @classmethod
+    def iter_json_lines(cls, path: Path) -> Iterator[dict]:
+        """Yield parsed JSON objects from a JSONL file (nuclei/httpx/dnsx...).
+        Tolerates ANSI codes, banner garbage interleaved by go tools."""
         with open(path, encoding="utf-8", errors="replace") as f:
             for line in f:
-                line = line.strip()
-                if not line:
+                line = cls._ANSI_RE.sub("", line).strip()
+                if not line or not line.startswith("{"):
                     continue
                 try:
                     yield json.loads(line)
                 except json.JSONDecodeError:
-                    continue
+                    # last resort — find the first {..} region
+                    start = line.find("{")
+                    if start >= 0:
+                        try:
+                            yield json.loads(line[start:])
+                        except json.JSONDecodeError:
+                            continue
 
     @staticmethod
     def read_lines(path: Path, lower: bool = False) -> list[str]:

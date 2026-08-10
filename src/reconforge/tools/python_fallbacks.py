@@ -7,14 +7,28 @@ import json
 import re
 import socket
 import ssl
+import warnings
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import urljoin
 
 import requests
 
+# disable InsecureRequestWarning spam — recon normally hits broken TLS setups
+warnings.filterwarnings("ignore", "Unverified HTTPS request")
+try:
+    from urllib3.exceptions import InsecureRequestWarning
+    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+except Exception:  # pragma: no cover
+    pass
+
+# Shared session with warnings disabled (reused across fallbacks)
+_SESSION = requests.Session()
+
 UA = {"User-Agent": "ReconForge/0.1 (+https://github.com)"}
 TIMEOUT = 8
+# populated post-init below
+_SESSION.headers.update(UA)
 
 # ---------------------------------------------------------------- crt.sh subs
 def crtsh_subdomains(domain: str) -> list[str]:

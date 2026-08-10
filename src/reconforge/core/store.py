@@ -63,8 +63,15 @@ KEY_FUNCS = {
     "hosts": lambda d: d["host"],
     "ports": lambda d: f'{d["host"]}:{d["port"]}',
     "urls": lambda d: d["url"],
-    "vulnerabilities": lambda d: f'{d.get("template_id","")}:{d["host"]}:{d.get("matched_at") or ""}',
-    "secrets": lambda d: d.get("hash") or f'{d["source_url"]}:{d["secret_type"]}',
+    # severity first so diff alerts can rank without a DB lookup
+    "vulnerabilities": lambda d: (
+        f'{d.get("severity", "info")}|{d.get("template_id", "")}:'
+        f'{d["host"]}:{d.get("matched_at") or ""}'
+    ),
+    "secrets": lambda d: (
+        f'{d.get("severity", "info")}|'
+        + (d.get("hash") or f'{d["source_url"]}:{d["secret_type"]}')
+    ),
 }
 
 

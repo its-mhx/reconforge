@@ -27,15 +27,21 @@ def run(cfg: EngineConfig, runner: ToolRunner, hosts: list[Host]) -> list[Host]:
         out_file.unlink(missing_ok=True)
         # httpx prints JSONL to stdout when -jsonl is given and no -o; writing
         # to stdout keeps compatibility across httpx versions.
-        r = runner.run(
-            "httpx",
-            [httpx_bin, "-silent", "-jsonl", "-title", "-tech-detect", "-status-code",
-             "-content-length", "-web-server", "-cdn", "-ip", "-cname",
-             "-follow-redirects", "-no-color", "-random-agent",
-             "-threads", str(cfg.threads), "-timeout", "8"],
-            input_file=hosts_file,
-            out_file=out_file,
-        )
+        from ..core.tool_flags import (detect_jsonl_flag, detect_no_color,
+                                       detect_silent_flag)
+        args = [
+            httpx_bin,
+            detect_silent_flag(httpx_bin),
+            detect_jsonl_flag(httpx_bin),
+            "-title", "-tech-detect", "-status-code", "-content-length",
+            "-web-server", "-cdn", "-ip", "-cname", "-follow-redirects",
+            "-random-agent",
+            "-threads", str(cfg.threads), "-timeout", "8",
+        ]
+        nc = detect_no_color(httpx_bin)
+        if nc:
+            args.append(nc)
+        r = runner.run("httpx", args, input_file=hosts_file, out_file=out_file)
         for obj in runner.iter_json_lines(out_file):
             host = (obj.get("host") or obj.get("input", "").split(":")[0]).lower()
             url = obj.get("url", "")

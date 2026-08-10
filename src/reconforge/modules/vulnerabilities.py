@@ -26,11 +26,23 @@ def run_nuclei(cfg: EngineConfig, runner: ToolRunner,
     # standard template classes (broad coverage like prettyrecon 'common vulns')
     base_tags = tags or ("exposure,misconfig,cve,default-login,tech,takeover,sqli,"
                          "lfi,rce,ssrf,redirect,iot")
+    from ..core.tool_flags import (detect_jsonl_flag, detect_no_color,
+                                   detect_silent_flag)
+    args = [
+        nuclei,
+        detect_silent_flag(nuclei),
+        detect_jsonl_flag(nuclei),
+        "-tags", base_tags,
+        "-severity", severity, "-rl", "150", "-c", str(cfg.threads),
+        "-timeout", "10", "-retries", "1",
+        "-stats=false",
+    ]
+    nc = detect_no_color(nuclei)
+    if nc:
+        args.append(nc)
     runner.run(
         "nuclei",
-        [nuclei, "-silent", "-jsonl", "-tags", base_tags,
-         "-severity", severity, "-rl", "150", "-c", str(cfg.threads),
-         "-timeout", "10", "-retries", "1", "-no-color"],
+        args,
         input_file=tfile,
         out_file=out / "nuclei.jsonl",
         timeout=cfg.timeout * 3,    # long-running phase

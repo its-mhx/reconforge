@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import csv
-import io
 import json
 from pathlib import Path
 
@@ -26,7 +25,14 @@ CATEGORY_FILES = {
 }
 
 
+def _cell(v):
+    if isinstance(v, (list, dict)):
+        return json.dumps(v, ensure_ascii=False)
+    return v
+
+
 def export_category(store: Store, out_dir: Path, fmt: str, category: str) -> Path | None:
+    """Export one category. Returns the written path (or None if no rows)."""
     if category not in CATEGORY_FILES:
         return None
     table, cols = CATEGORY_FILES[category]
@@ -34,55 +40,81 @@ def export_category(store: Store, out_dir: Path, fmt: str, category: str) -> Pat
     if not rows:
         return None
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{category}.{fmt if fmt != 'xlsx' else 'csv'}"
+
     if fmt == "json":
         path = out_dir / f"{category}.json"
         path.write_text(json.dumps(rows, indent=2, default=str))
-    elif fmt == "csv":
+        return path
+    if fmt == "csv":
         path = out_dir / f"{category}.csv"
-        with open(path, "w", newline="") as fh:
+        with open(path, "w", newline="", encoding="utf-8") as fh:
             w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
-            w.writeheader(); w.writerows(rows)
-    elif fmt == "txt":
+            w.writeheader()
+            for r in rows:
+                w.writerow({c: _cell(r.get(c)) for c in cols})
+        return path
+    if fmt == "txt":
         path = out_dir / f"{category}.txt"
         key_col = cols[0]
+        # prefer "alive" hosts first for subdomains txt
+        if category == "subdomains":
+            rows = sorted(rows, key=lambda r: 0 if r.get("alive") else 1)
         path.write_text("\n".join(str(r.get(key_col, "")) for r in rows))
-    return path
-
-
-def export_excel(store: Store, out_dir: Path) -> Path:
-    out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "reconforge_report.xlsx"
-    wb = Workbook()
-    wb.remove(wb.active)
-    for category, (table, cols) in CATEGORY_FILES.items():
-        rows = store.table(table)
-        if not rows:
-            continue
-        ws = wb.create_sheet(title=category[:31])
+        return path
+    if fmt in ("xlsx", "excel"):
+        path = out_dir / f"{category}.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = category[:31]
         ws.append(cols)
         for r in rows:
             ws.append([_cell(r.get(c)) for c in cols])
-        for col in ws.columns:
-            ws.column_dimensions[col[0].column_letter].width = min(
-                max((len(str(c.value or "")) for c in col), default=10) + 2, 80)
+        _autowidth(ws)
+        wb.save(path)
+        return path
+    return None
+
+
+def export_excel(store: Store, out_dir: Path) -> Path:
+    """One workbook with a sheet per category."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "reconforge_report.xlsx"
+    wb = Workbook()
+    written = 0
+    for i, (category, (table, cols)) in enumerate(CATEGORY_FILES.items()):
+        rows = store.table(table)
+        if not rows:
+            continue
+        ws = wb.active if wb.active.max_row == 1 and written == 0 else wb.create_sheet()
+        ws.title = category[:31]
+        written += 1
+        ws.append(cols)
+        for r in rows:
+            ws.append([_cell(r.get(c)) for c in cols])
+        _autowidth(ws)
+    if written == 0:                              # workbook with zero sheets
+        ws = wb.active
+        ws.title = "empty"
+        ws.append(["no data"])
     wb.save(path)
     return path
 
 
-def _cell(v):
-    if isinstance(v, (list, dict)):
-        return json.dumps(v)
-    return v
+def _autowidth(ws) -> None:
+    for col in ws.columns:
+        try:
+            width = min(max((len(str(c.value or "")) for c in col), default=8) + 2, 80)
+            ws.column_dimensions[col[0].column_letter].width = width
+        except Exception:
+            pass
 
 
 def export_all(store: Store, out_dir: Path, fmts: list[str]) -> list[Path]:
     paths: list[Path] = []
+    exp_dir = out_dir / "exports"
     for category in CATEGORY_FILES:
         for fmt in fmts:
-            p = export_category(store, out_dir / "exports", fmt, category)
+            p = export_category(store, exp_dir, fmt, category)
             if p:
                 paths.append(p)
-    if "xlsx" in fmts or "excel" in fmts:
-        paths.append(export_excel(store, out_dir / "exports"))
     return paths
