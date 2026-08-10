@@ -24,6 +24,19 @@ app = typer.Typer(
 console = Console()
 
 
+def _clean_target(raw: str) -> str:
+    """Accept https?://host, host/path, host,, strip scheme+path+port."""
+    import re as _re
+    raw = raw.strip().lower()
+    raw = _re.sub(r"^https?://", "", raw)
+    raw = raw.split("/", 1)[0]
+    raw = raw.rstrip(".")
+    # strip port if present
+    if ":" in raw and not raw.count(":") > 1:
+        raw = raw.split(":")[0]
+    return raw
+
+
 def _cfg(target: str, profile: str, **kw) -> EngineConfig:
     cfg = EngineConfig(target=target, profile=profile, **kw)
     cfg.out_dir.mkdir(parents=True, exist_ok=True)
@@ -72,7 +85,8 @@ def scan(
                     katana_depth=katana_depth)
 
     if domains:
-        lines = [l.strip() for l in domains.read_text().splitlines() if l.strip()]
+        lines = [_clean_target(l) for l in domains.read_text().splitlines()
+                 if l.strip()]
         console.print(f"[bold]{len(lines)} targets queued[/]")
         for t in lines:
             if valid_domain(t):
@@ -84,6 +98,7 @@ def scan(
 
     if not target:
         raise typer.BadParameter("provide a TARGET or --domains file")
+    target = _clean_target(target)
     if not valid_domain(target):
         raise typer.BadParameter(f"'{target}' is not a valid domain")
     Pipeline(_mk(target), verbose=verbose).run()

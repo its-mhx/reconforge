@@ -77,7 +77,6 @@ def run(cfg: EngineConfig, runner: ToolRunner) -> dict[str, list[str]]:
                 from ..core.tool_flags import detect_jsonl_flag, detect_silent_flag
                 jfile = out / "subs_bruteforce.jsonl"
                 jfile.unlink(missing_ok=True)
-                # NOTE: avoid -wd here, some dnsx versions drop output when it's set.
                 args = [dnsx,
                         detect_silent_flag(dnsx),
                         detect_jsonl_flag(dnsx),
@@ -122,8 +121,8 @@ def run(cfg: EngineConfig, runner: ToolRunner) -> dict[str, list[str]]:
             jfile = out / "subs_perm.jsonl"
             jfile.unlink(missing_ok=True)
             runner.run("dnsx", [dnsx, detect_silent_flag(dnsx),
-                                detect_jsonl_flag(dnsx), "-resp", "-rl", "200",
-                                "-t", str(cfg.threads)],
+                                detect_jsonl_flag(dnsx), "-a", "-resp",
+                                "-rl", "200", "-t", str(cfg.threads)],
                        input_file=perm_file,
                        out_file=jfile)
             for obj in runner.iter_json_lines(jfile):

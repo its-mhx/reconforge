@@ -85,6 +85,8 @@ def run(cfg: EngineConfig, runner: ToolRunner,
         jfile = out / "resolved.jsonl"
         jfile.unlink(missing_ok=True)
         from ..core.tool_flags import detect_jsonl_flag, detect_silent_flag
+        # NOTE: dnsx 1.2.2's -wd swallows output on multi-resolver setups —
+        # we do wildcard filtering in Python instead (see _collapse_wildcards).
         runner.run(
             "dnsx",
             [dnsx, detect_silent_flag(dnsx), detect_jsonl_flag(dnsx),
