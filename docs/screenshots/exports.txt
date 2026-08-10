@@ -1,0 +1,12 @@
+✓ output/owasp.org/exports/subdomains.json
+✓ output/owasp.org/exports/subdomains.csv
+✓ output/owasp.org/exports/subdomains.txt
+✓ output/owasp.org/exports/subdomains.xlsx
+✓ output/owasp.org/exports/urls.json
+✓ output/owasp.org/exports/urls.csv
+✓ output/owasp.org/exports/urls.txt
+✓ output/owasp.org/exports/urls.xlsx
+✓ output/owasp.org/exports/dns_records.json
+✓ output/owasp.org/exports/dns_records.csv
+✓ output/owasp.org/exports/dns_records.txt
+✓ output/owasp.org/exports/dns_records.xlsx

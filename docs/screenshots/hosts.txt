@@ -1,0 +1,42 @@
+                            hosts (44 — alive only)                             
+┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
+┃ host              ┃ alive             ┃ status_code       ┃ title            ┃
+┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
+│ 20thanniversary.… │ 1                 │ 200               │ OWASP 20th       │
+│                   │                   │                   │ Anniversary      │
+│ aivss.owasp.org   │ 1                 │ 200               │ OWASP AI         │
+│                   │                   │                   │ Vulnerability    │
+│                   │                   │                   │ Scoring System   │
+│                   │                   │                   │ (AIVSS) | OWASP  │
+│                   │                   │                   │ Foundation       │
+│ asvs.owasp.org    │ 1                 │ 200               │ OWASP            │
+│                   │                   │                   │ Application      │
+│                   │                   │                   │ Security         │
+│                   │                   │                   │ Verification     │
+│                   │                   │                   │ Standard (ASVS)  │
+│                   │                   │                   │ | OWASP          │
+│                   │                   │                   │ Foundation       │
+│ aghast.owasp.org  │ 1                 │ 200               │ OWASP AGHAST |   │
+│                   │                   │                   │ AI-Guided Hybrid │
+│                   │                   │                   │ Application      │
+│                   │                   │                   │ Static Testing   │
+│ austin.owasp.org  │ 1                 │ 403               │                  │
+│ brainbreak.owasp… │ 1                 │ 200               │ Brain Break 2021 │
+│                   │                   │                   │ | OWASP          │
+│ aos.owasp.org     │ 1                 │ 200               │ Agent            │
+│                   │                   │                   │ Observability    │
+│                   │                   │                   │ Standard         │
+│ contact.owasp.org │ 1                 │ 200               │ Jira Service     │
+│                   │                   │                   │ Management       │
+│ blt.owasp.org     │ 1                 │ 503               │ Offline for      │
+│                   │                   │                   │ Maintenance      │
+│ board.owasp.org   │ 1                 │ 403               │                  │
+│ cornucopia.owasp… │ 1                 │ 200               │ OWASP Cornucopia │
+│                   │                   │                   │ - Threat         │
+│                   │                   │                   │ modeling for     │
+│                   │                   │                   │ everyone         │
+│ cloud.owasp.org   │ 1                 │ 200               │ Apache2 Ubuntu   │
+│                   │                   │                   │ Default Page: It │
+│                   │                   │                   │ works            │
+└───────────────────┴───────────────────┴───────────────────┴──────────────────┘
+… and 32 more (raise --limit)
