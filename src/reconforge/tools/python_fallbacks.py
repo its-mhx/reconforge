@@ -17,10 +17,11 @@ import requests
 # disable InsecureRequestWarning spam — recon normally hits broken TLS setups
 warnings.filterwarnings("ignore", "Unverified HTTPS request")
 try:
+    from urllib3 import disable_warnings
     from urllib3.exceptions import InsecureRequestWarning
-    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-except Exception:  # pragma: no cover
-    pass
+    disable_warnings(InsecureRequestWarning)
+except ImportError:
+    pass  # urllib3 not present
 
 # Shared session with warnings disabled (reused across fallbacks)
 _SESSION = requests.Session()

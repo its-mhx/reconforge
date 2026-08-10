@@ -60,6 +60,8 @@ def scan(
     proxy: Optional[str] = typer.Option(None, "--proxy"),
     no_bruteforce: bool = typer.Option(False, "--no-bruteforce"),
     run_xss: bool = typer.Option(False, "--xss", help="Enable XSS scanning (noisy)"),
+    nuclei_rl: int = typer.Option(100, "--nuclei-rl", help="Nuclei req/sec rate limit"),
+    max_hosts: int = typer.Option(500, "--max-hosts", help="Cap alive hosts for probing/vuln scan"),
     run_dirscan: bool = typer.Option(False, "--dirscan", help="Enable dir bruteforce"),
     no_nuclei: bool = typer.Option(False, "--no-nuclei"),
     no_katana: bool = typer.Option(False, "--no-katana", help="Disable katana crawl"),
@@ -75,7 +77,7 @@ def scan(
         os.environ["RECONF_WEBHOOK"] = webhook
 
     def _mk(t: str) -> EngineConfig:
-        return _cfg(t, profile, output_root=output, threads=threads, timeout=timeout,
+        cfg = _cfg(t, profile, output_root=output, threads=threads, timeout=timeout,
                     wordlist_subs=wordlist_subs, wordlist_dirs=wordlist_dirs,
                     resolvers=resolvers, proxy=proxy,
                     active_bruteforce=not no_bruteforce, run_xss=run_xss,
@@ -83,6 +85,9 @@ def scan(
                     run_katana=not no_katana,
                     katana_max_hosts=katana_max_hosts,
                     katana_depth=katana_depth)
+        cfg.extra["nuclei_rl"] = nuclei_rl
+        cfg.extra["max_hosts_probe"] = max_hosts
+        return cfg
 
     if domains:
         lines = [_clean_target(l) for l in domains.read_text().splitlines()

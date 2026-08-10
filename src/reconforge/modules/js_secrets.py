@@ -47,7 +47,7 @@ SECRET_PATTERNS: dict[str, tuple[str, str]] = {
 _JS_BODY_CACHE: dict[str, str] = {}
 
 
-def _fetch(url: str, timeout: int = 10) -> str:
+def _fetch(url: str, timeout: int = 6) -> str:
     if url in _JS_BODY_CACHE:
         return _JS_BODY_CACHE[url]
     try:
@@ -135,5 +135,8 @@ def run(cfg: EngineConfig, runner: ToolRunner, urls: list[str]) -> tuple[list[JS
                                   else str(obj.get("extracted-results", "")[:200]),
                                   severity=sev))
 
+    # NOTE: nuclei token/exposure templates are intentionally NOT run here —
+    # they double the runtime for the same findings, since nuclei already scans
+    # the full url corpus in the vulnerabilities module.
     console.print(f"[green]✓ js/secrets: {len(endpoints)} endpoints, {len(secrets)} potential secrets[/]")
     return endpoints, secrets
