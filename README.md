@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">🔍 ReconForge</h1>
   <p align="center">
-    <b>Local, free, PrettyRecon-style attack-surface recon platform for bug bounty hunters.</b><br/>
+    <b>Local, free, professional-grade attack-surface recon platform for bug bounty hunters.</b><br/>
     Your targets and findings never leave your machine.
   </p>
   <p align="center">
@@ -17,8 +17,8 @@
 ## Why ReconForge?
 
 SaaS recon platforms charge $22+/month for what is, at its core, an orchestrator around free
-open-source tools. ReconForge gives you the **same pipeline, locally, for free** — plus things
-the paid platforms don't: diff-based monitoring alerts, standalone HTML reports, Excel exports,
+open-source tools. ReconForge gives you **the same pipeline, locally, for free** — plus things
+paid platforms don't: diff-based monitoring alerts, standalone HTML reports, Excel exports,
 and principled pure-Python fallbacks so no stage ever hard-fails when a binary is missing.
 
 **Verified real run** (owasp.org, `basic` profile, no bruteforce):
@@ -186,13 +186,13 @@ Design notes:
 - **Bounded runtime** — nuclei targets, katana crawl and JS fetches are all hard-capped so
   big surfaces finish in minutes instead of hours. Tunable via CLI flags.
 
-## Output formats vs PrettyRecon
+## Why local beats SaaS recon
 
-| Capability | PrettyRecon | ReconForge |
+| Capability | SaaS Platforms | ReconForge |
 |---|---|---|
 | 30+ recon modules | ✅ cloud | ✅ local |
-| Price | $22/mo | **free / open source** |
-| Data privacy | stored on their servers | **100% local SQLite** |
+| Price | $22+/mo | **free / open source** |
+| Data privacy | stored on vendor servers | **100% local SQLite** |
 | CSV/TXT/Excel export | ✅ | ✅ |
 | Diff monitoring alerts | ✅ webhook | ✅ webhook + Telegram |
 | Standalone HTML report | ❌ | ✅ |

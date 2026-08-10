@@ -1,4 +1,4 @@
-"""Export scan data to txt/csv/json/excel (PrettyRecon parity)."""
+"""Export scan data to txt/csv/json/excel in multiple standard formats."""
 from __future__ import annotations
 
 import csv

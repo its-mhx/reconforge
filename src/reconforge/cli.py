@@ -16,7 +16,7 @@ from .pipeline import Pipeline, PROFILES
 
 app = typer.Typer(
     name="reconforge",
-    help="Local attack-surface recon platform — all PrettyRecon features, local & free.",
+    help="Local attack-surface recon platform — OSINT-grade features, local & free.",
     no_args_is_help=True,
     rich_markup_mode="rich",
     pretty_exceptions_show_locals=False,

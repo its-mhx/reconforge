@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "reconforge"
 version = "0.1.0"
-description = "All-in-one local recon & attack-surface monitoring platform for bug bounty (PrettyRecon-style, but local and free)"
+description = "All-in-one local recon & attack-surface monitoring platform for bug bounty hunters — free, private, offline-capable"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

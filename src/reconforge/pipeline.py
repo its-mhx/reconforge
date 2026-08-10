@@ -1,7 +1,7 @@
 """Pipeline orchestrator — maps profile presets to ordered module execution.
 
 Every module runs inside a `_safe_step()` wrapper: failures are reported but
-never crash the whole pipeline (PrettyRecon-style resilience)."""
+never crash the whole pipeline (full fault-tolerant resilience)."""
 from __future__ import annotations
 
 import time
