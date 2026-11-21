@@ -140,11 +140,15 @@ jobs:
                   print(f" - {domain}")
           PY
 
+      - name: Run Scope Validation
+        run: |
+          python scripts/scope_filter.py
+
       - name: Upload Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: passive-recon-results
-          path: output/passive_subdomains.txt
+          name: reconforge-results
+          path: output/
           if-no-files-found: error
           retention-days: 7
