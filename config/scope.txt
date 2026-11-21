@@ -1,0 +1,17 @@
+# Ably VDP scope configuration
+
+ALLOW ably.com
+ALLOW control.ably.net
+ALLOW main.realtime.ably.net
+ALLOW realtime.ably.io
+ALLOW rest.ably.io
+
+ALLOW *.realtime.ably.net
+ALLOW *-realtime.ably.io
+ALLOW *-rest.ably.io
+ALLOW *.ably-realtime.com
+
+REVIEW *.ably.com
+
+DENY support.ably.com
+DENY *.support.ably.com
