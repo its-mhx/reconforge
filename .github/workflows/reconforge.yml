@@ -1,5 +1,5 @@
 
-name: ReconForge Automation
+name: ReconForge - Passive Recon
 
 on:
   workflow_dispatch:
@@ -8,9 +8,9 @@ permissions:
   contents: read
 
 jobs:
-  recon:
+  passive-recon:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 10
 
     steps:
       - name: Checkout Repository
@@ -27,5 +27,53 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Check ReconForge
-        run: reconforge --help
+      - name: Run Passive Certificate Discovery
+        run: |
+          mkdir -p output
+
+          python - <<'PY'
+          import json
+          import requests
+          from pathlib import Path
+
+          targets = [
+              line.strip().lower()
+              for line in Path("watchlist.txt").read_text().splitlines()
+              if line.strip() and not line.startswith("#")
+          ]
+
+          results = set()
+
+          for domain in targets:
+              print(f"[+] Querying crt.sh for {domain}")
+
+              response = requests.get(
+                  "https://crt.sh/",
+                  params={"q": f"%.{domain}", "output": "json"},
+                  timeout=60,
+              )
+              response.raise_for_status()
+
+              for item in response.json():
+                  for name in item.get("name_value", "").splitlines():
+                      name = name.strip().lower().lstrip("*.")
+                      if name == domain or name.endswith("." + domain):
+                          results.add(name)
+
+          output = Path("output/passive_subdomains.txt")
+          output.write_text(
+              "\n".join(sorted(results)) + ("\n" if results else "")
+          )
+
+          print(f"[+] Found {len(results)} unique in-scope names")
+          print(f"[+] Saved results to {output}")
+          PY
+
+      - name: Upload Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: passive-recon-results
+          path: output/
+          if-no-files-found: warn
+          retention-days: 7
