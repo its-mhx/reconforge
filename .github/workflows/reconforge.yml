@@ -1,5 +1,5 @@
 
-name: ReconForge - Passive Recon
+name: ReconForge
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
 jobs:
   passive-recon:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Repository
@@ -21,52 +21,123 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e .
-
       - name: Run Passive Certificate Discovery
         run: |
           mkdir -p output
+          touch output/passive_subdomains.txt
 
           python - <<'PY'
           import json
-          import requests
+          import time
+          import urllib.request
+          import urllib.parse
+          import urllib.error
           from pathlib import Path
 
+          watchlist = Path("watchlist.txt")
+          output = Path("output/passive_subdomains.txt")
+
+          if not watchlist.exists():
+              raise SystemExit("[ERROR] watchlist.txt is missing")
+
           targets = [
-              line.strip().lower()
-              for line in Path("watchlist.txt").read_text().splitlines()
-              if line.strip() and not line.startswith("#")
+              line.strip().lower().rstrip(".")
+              for line in watchlist.read_text().splitlines()
+              if line.strip() and not line.lstrip().startswith("#")
           ]
 
+          if not targets:
+              raise SystemExit("[ERROR] watchlist.txt is empty")
+
           results = set()
+          failed = []
 
           for domain in targets:
-              print(f"[+] Querying crt.sh for {domain}")
+              print(f"\n[+] Querying crt.sh for {domain}")
 
-              response = requests.get(
-                  "https://crt.sh/",
-                  params={"q": f"%.{domain}", "output": "json"},
-                  timeout=60,
-              )
-              response.raise_for_status()
+              params = urllib.parse.urlencode({
+                  "q": domain,
+                  "output": "json"
+              })
 
-              for item in response.json():
+              url = f"https://crt.sh/?{params}"
+              data = None
+
+              for attempt in range(1, 4):
+                  request = urllib.request.Request(
+                      url,
+                      headers={
+                          "User-Agent": "ReconForge-PassiveResearch/1.0"
+                      }
+                  )
+
+                  try:
+                      with urllib.request.urlopen(
+                          request, timeout=45
+                      ) as response:
+                          data = json.loads(response.read().decode("utf-8"))
+
+                      if not isinstance(data, list):
+                          raise ValueError("Unexpected JSON format")
+
+                      break
+
+                  except urllib.error.HTTPError as error:
+                      if error.code == 404:
+                          print(f"[-] No records for {domain}")
+                          data = []
+                          break
+
+                      print(
+                          f"[!] HTTP {error.code} for {domain} "
+                          f"(attempt {attempt}/3)"
+                      )
+
+                  except (
+                      urllib.error.URLError,
+                      TimeoutError,
+                      ValueError
+                  ) as error:
+                      print(
+                          f"[!] Request/response error: {error} "
+                          f"(attempt {attempt}/3)"
+                      )
+
+                  if attempt < 3:
+                      time.sleep(2 ** attempt)
+
+              if data is None:
+                  failed.append(domain)
+                  print(f"[!] Skipping {domain} after 3 attempts")
+                  continue
+
+              for item in data:
                   for name in item.get("name_value", "").splitlines():
                       name = name.strip().lower().lstrip("*.")
-                      if name == domain or name.endswith("." + domain):
+
+                      if (
+                          name == domain
+                          or name.endswith("." + domain)
+                      ):
                           results.add(name)
 
-          output = Path("output/passive_subdomains.txt")
+              print(f"[+] Finished {domain}")
+              time.sleep(1)
+
           output.write_text(
               "\n".join(sorted(results)) + ("\n" if results else "")
           )
 
-          print(f"[+] Found {len(results)} unique in-scope names")
-          print(f"[+] Saved results to {output}")
+          print("\n========== SUMMARY ==========")
+          print(f"Targets processed: {len(targets)}")
+          print(f"Unique names found: {len(results)}")
+          print(f"Failed targets: {len(failed)}")
+          print(f"Results saved to: {output}")
+
+          if failed:
+              print("[!] Retry these targets in a later run:")
+              for domain in failed:
+                  print(f" - {domain}")
           PY
 
       - name: Upload Results
@@ -74,6 +145,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: passive-recon-results
-          path: output/
-          if-no-files-found: warn
+          path: output/passive_subdomains.txt
+          if-no-files-found: error
           retention-days: 7
