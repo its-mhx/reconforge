@@ -1,2 +1,5 @@
-shuffle.com
-shuffle.us
+ably.com
+ably.net
+realtime.ably.net
+ably.io
+ably-realtime.com
